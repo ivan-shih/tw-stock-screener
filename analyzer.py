@@ -128,7 +128,9 @@ COLOR_PRIORITY = {'red': 0, 'blue': 1, 'yellow': 2, 'green': 3}
 def filter_and_sort(stocks, market_direction='up'):
     filtered = []
     for s in stocks:
-        if market_direction == 'up' and s['is_buy_dominant']:
+        if s['color'] == 'green':
+            filtered.append(s)
+        elif market_direction == 'up' and s['is_buy_dominant']:
             filtered.append(s)
         elif market_direction == 'down' and s['is_sell_dominant']:
             filtered.append(s)
