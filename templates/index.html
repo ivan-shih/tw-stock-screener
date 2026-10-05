@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>法人買賣超選股系統 - 麥克連選股法</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Microsoft JhengHei", "PingFang TC", sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header h1 { font-size: 22px; font-weight: 600; }
+        .header .subtitle { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+        .date-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .date-selector select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 14px;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            cursor: pointer;
+        }
+        .date-selector select option { color: #333; background: white; }
+        .btn-refresh {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .btn-refresh:hover { background: rgba(255,255,255,0.3); }
+
+        .market-info {
+            background: white;
+            padding: 16px 30px;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+        .market-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .market-badge.up { background: #fce4ec; color: #c62828; }
+        .market-badge.down { background: #e8f5e9; color: #2e7d32; }
+        .market-badge.unknown { background: #fff3e0; color: #e65100; }
+
+        .stats-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .stat-chip {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .stat-chip.red { background: #ffcdd2; color: #b71c1c; }
+        .stat-chip.blue { background: #bbdefb; color: #0d47a1; }
+        .stat-chip.green { background: #c8e6c9; color: #1b5e20; }
+        .stat-chip.yellow { background: #fff9c4; color: #f57f17; }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            color: #666;
+        }
+        .tab:hover { color: #1a237e; }
+        .tab.active { color: #1a237e; border-bottom-color: #1a237e; }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 24px 0 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title .count {
+            background: #e8eaf6;
+            color: #1a237e;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 13px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+        }
+        .legend-dot.red { background: #e53935; }
+        .legend-dot.blue { background: #1565c0; }
+        .legend-dot.green { background: #2e7d32; }
+        .legend-dot.yellow { background: #f9a825; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+        thead th {
+            background: #f5f5f5;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+        }
+        tbody td {
+            padding: 8px 12px;
+            font-size: 13px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        tbody tr:hover { background: #f8f9ff; }
+        tbody tr.color-red { border-left: 4px solid #e53935; }
+        tbody tr.color-blue { border-left: 4px solid #1565c0; }
+        tbody tr.color-green { border-left: 4px solid #2e7d32; }
+        tbody tr.color-yellow { border-left: 4px solid #f9a825; }
+
+        .color-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+        .color-tag.red { background: #e53935; }
+        .color-tag.blue { background: #1565c0; }
+        .color-tag.green { background: #2e7d32; }
+        .color-tag.yellow { background: #f9a825; color: #333; }
+
+        .num-positive { color: #c62828; font-weight: 500; }
+        .num-negative { color: #2e7d32; font-weight: 500; }
+
+        .market-label {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .market-label.tse { background: #e3f2fd; color: #1565c0; }
+        .market-label.otc { background: #fce4ec; color: #c62828; }
+
+        .reason-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+        .reason-tag {
+            font-size: 11px;
+            padding: 1px 6px;
+            border-radius: 3px;
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .rankings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .ranking-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .ranking-card h3 {
+            padding: 10px 14px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .ranking-card h3.buy-header { background: #ffebee; color: #b71c1c; }
+        .ranking-card h3.sell-header { background: #e8f5e9; color: #1b5e20; }
+        .ranking-card table { box-shadow: none; margin: 0; }
+        .ranking-card table thead th { font-size: 12px; }
+        .ranking-card table tbody td { font-size: 12px; padding: 6px 10px; }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+        }
+        .loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e0e0e0;
+            border-top-color: #1a237e;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .priority-banner {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 15px;
+            font-weight: 500;
+        }
+        .priority-banner.buy { background: #fff3e0; border: 1px solid #ffcc02; color: #e65100; }
+        .priority-banner.sell { background: #e8f5e9; border: 1px solid #66bb6a; color: #1b5e20; }
+        .priority-banner.neutral { background: #e3f2fd; border: 1px solid #90caf9; color: #0d47a1; }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .format-num { font-family: "SF Mono", "Cascadia Code", monospace; text-align: right; }
+
+        @media (max-width: 768px) {
+            .header { padding: 16px; }
+            .header h1 { font-size: 18px; }
+            .container { padding: 12px; }
+            .rankings-grid { grid-template-columns: 1fr; }
+            table { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>法人買賣超選股系統</h1>
+            <div class="subtitle">麥克連選股法 · 每日自動篩選</div>
+        </div>
+        <div class="date-selector">
+            <select id="dateSelect"></select>
+            <button class="btn-refresh" onclick="loadData()">重新載入</button>
+        </div>
+    </div>
+
+    <div class="market-info" id="marketInfo" style="display:none;">
+        <div class="market-badge" id="marketBadge"></div>
+        <div class="stats-row" id="statsRow"></div>
+    </div>
+
+    <div class="container">
+        <div id="loadingArea" class="loading">
+            <div class="spinner"></div>
+            <div>正在從證交所獲取數據，請稍候...</div>
+        </div>
+
+        <div id="contentArea" style="display:none;">
+            <div class="tabs">
+                <div class="tab active" data-tab="recommended" onclick="switchTab('recommended')">推薦個股</div>
+                <div class="tab" data-tab="rankings" onclick="switchTab('rankings')">完整排行</div>
+                <div class="tab" data-tab="all" onclick="switchTab('all')">全部標記</div>
+            </div>
+
+            <div id="tab-recommended">
+                <div class="legend">
+                    <div class="legend-item"><div class="legend-dot red"></div>紅：外資+投信同步買超（最優先）</div>
+                    <div class="legend-item"><div class="legend-dot blue"></div>藍：連續2日法人買超</div>
+                    <div class="legend-item"><div class="legend-dot yellow"></div>黃：新進榜個股</div>
+                    <div class="legend-item"><div class="legend-dot green"></div>綠：外資投信方向相反</div>
+                </div>
+
+                <div id="priorityBanner"></div>
+
+                <div class="section-title">
+                    推薦個股（依大盤方向篩選）
+                    <span class="count" id="recommendedCount"></span>
+                </div>
+                <div id="recommendedTable"></div>
+
+                <div class="section-title" style="margin-top:32px;">
+                    買超推薦
+                    <span class="count" id="buyCount"></span>
+                </div>
+                <div id="buyTable"></div>
+
+                <div class="section-title" style="margin-top:32px;">
+                    賣超觀察
+                    <span class="count" id="sellCount"></span>
+                </div>
+                <div id="sellTable"></div>
+            </div>
+
+            <div id="tab-rankings" style="display:none;">
+                <div class="section-title">上市 · 法人買賣超排行 Top 30</div>
+                <div class="rankings-grid" id="tseRankings"></div>
+                <div class="section-title">上櫃 · 法人買賣超排行 Top 30</div>
+                <div class="rankings-grid" id="otcRankings"></div>
+            </div>
+
+            <div id="tab-all" style="display:none;">
+                <div class="section-title">
+                    全部顏色標記個股
+                    <span class="count" id="allCount"></span>
+                </div>
+                <div id="allTable"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentData = null;
+
+        function formatNumber(n) {
+            if (n === 0) return '-';
+            const abs = Math.abs(n);
+            if (abs >= 10000) return (n / 10000).toFixed(1) + '萬';
+            return n.toLocaleString();
+        }
+
+        function formatShares(n) {
+            if (n === 0) return '-';
+            const abs = Math.abs(n);
+            if (abs >= 10000) return (n / 10000).toFixed(1) + '萬股';
+            return n.toLocaleString() + '股';
+        }
+
+        async function loadDates() {
+            try {
+                const resp = await fetch('/api/dates');
+                const dates = await resp.json();
+                const select = document.getElementById('dateSelect');
+                select.innerHTML = '';
+                dates.forEach((d, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = d;
+                    opt.textContent = `${d.slice(0,4)}/${d.slice(4,6)}/${d.slice(6,8)}`;
+                    if (i === 0) opt.selected = true;
+                    select.appendChild(opt);
+                });
+            } catch(e) {
+                console.error('Failed to load dates:', e);
+            }
+        }
+
+        async function loadData() {
+            const dateSelect = document.getElementById('dateSelect');
+            const date = dateSelect.value || '';
+            document.getElementById('loadingArea').style.display = 'block';
+            document.getElementById('contentArea').style.display = 'none';
+
+            try {
+                const resp = await fetch(`/api/analyze?date=${date}`);
+                currentData = await resp.json();
+                if (currentData.error) {
+                    alert('錯誤：' + currentData.error);
+                    return;
+                }
+                renderData(currentData);
+            } catch(e) {
+                console.error('Failed to load data:', e);
+                document.getElementById('loadingArea').innerHTML = '<div style="color:#c62828;">載入失敗，請稍後重試</div>';
+            }
+        }
+
+        function renderData(data) {
+            document.getElementById('loadingArea').style.display = 'none';
+            document.getElementById('contentArea').style.display = 'block';
+            document.getElementById('marketInfo').style.display = 'flex';
+
+            const badge = document.getElementById('marketBadge');
+            const dir = data.market_direction;
+            const dirLabel = dir === 'up' ? '多頭' : dir === 'down' ? '空頭' : '未知';
+            badge.className = `market-badge ${dir}`;
+            badge.innerHTML = `大盤 ${data.market_close.toLocaleString()} ${data.market_change >= 0 ? '▲' : '▼'}${Math.abs(data.market_change).toFixed(2)} · ${dirLabel}`;
+
+            const stats = data.stats;
+            document.getElementById('statsRow').innerHTML = `
+                <span class="stat-chip red">紅 ${stats.red_count}</span>
+                <span class="stat-chip blue">藍 ${stats.blue_count}</span>
+                <span class="stat-chip green">綠 ${stats.green_count}</span>
+                <span class="stat-chip yellow">黃 ${stats.yellow_count}</span>
+                <span class="stat-chip" style="background:#f5f5f5;color:#333;">共 ${stats.total_screened} 檔</span>
+            `;
+
+            const banner = document.getElementById('priorityBanner');
+            const bannerClass = dir === 'up' ? 'buy' : dir === 'down' ? 'sell' : 'neutral';
+            banner.className = `priority-banner ${bannerClass}`;
+            banner.innerHTML = `大盤${dirLabel}，優先關注<span style="font-weight:700;">${data.priority_label}</span>個股 · 優先順序：<strong>紅 > 藍 > 黃</strong>`;
+
+            renderStockTable('recommendedTable', data.recommended);
+            document.getElementById('recommendedCount').textContent = `${data.recommended.length} 檔`;
+
+            renderStockTable('buyTable', data.buy_stocks);
+            document.getElementById('buyCount').textContent = `${data.buy_stocks.length} 檔`;
+
+            renderStockTable('sellTable', data.sell_stocks);
+            document.getElementById('sellCount').textContent = `${data.sell_stocks.length} 檔`;
+
+            renderStockTable('allTable', data.all_stocks);
+            document.getElementById('allCount').textContent = `${data.all_stocks.length} 檔`;
+
+            renderRankings(data.rankings);
+        }
+
+        function renderStockTable(containerId, stocks) {
+            const container = document.getElementById(containerId);
+            if (!stocks || stocks.length === 0) {
+                container.innerHTML = '<div class="empty-state">無符合條件的個股</div>';
+                return;
+            }
+
+            let html = `<table>
+                <thead><tr>
+                    <th>#</th>
+                    <th>顏色</th>
+                    <th>市場</th>
+                    <th>代號</th>
+                    <th>名稱</th>
+                    <th class="format-num">外資買賣超</th>
+                    <th class="format-num">投信買賣超</th>
+                    <th>標記原因</th>
+                </tr></thead><tbody>`;
+
+            stocks.forEach((s, i) => {
+                const colorLabel = {red:'紅',blue:'藍',green:'綠',yellow:'黃'}[s.color] || s.color;
+                const marketClass = s.market_key === 'tse' ? 'tse' : 'otc';
+                html += `<tr class="color-${s.color}">
+                    <td>${i+1}</td>
+                    <td><span class="color-tag ${s.color}">${colorLabel}</span></td>
+                    <td><span class="market-label ${marketClass}">${s.market}</span></td>
+                    <td style="font-weight:600;">${s.code}</td>
+                    <td>${s.name}</td>
+                    <td class="format-num ${s.foreign_net > 0 ? 'num-positive' : s.foreign_net < 0 ? 'num-negative' : ''}">${formatShares(s.foreign_net)}</td>
+                    <td class="format-num ${s.trust_net > 0 ? 'num-positive' : s.trust_net < 0 ? 'num-negative' : ''}">${formatShares(s.trust_net)}</td>
+                    <td><div class="reason-tags">${s.reasons.map(r => `<span class="reason-tag">${r}</span>`).join('')}</div></td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function renderRankings(rankings) {
+            const sections = [
+                { key: 'tse_foreign_buy', label: '外資買超', cls: 'buy-header', id: 'tseRankings' },
+                { key: 'tse_foreign_sell', label: '外資賣超', cls: 'sell-header', id: 'tseRankings' },
+                { key: 'tse_trust_buy', label: '投信買超', cls: 'buy-header', id: 'tseRankings' },
+                { key: 'tse_trust_sell', label: '投信賣超', cls: 'sell-header', id: 'tseRankings' },
+            ];
+            const otcSections = [
+                { key: 'otc_foreign_buy', label: '外資買超', cls: 'buy-header', id: 'otcRankings' },
+                { key: 'otc_foreign_sell', label: '外資賣超', cls: 'sell-header', id: 'otcRankings' },
+                { key: 'otc_trust_buy', label: '投信買超', cls: 'buy-header', id: 'otcRankings' },
+                { key: 'otc_trust_sell', label: '投信賣超', cls: 'sell-header', id: 'otcRankings' },
+            ];
+
+            renderRankingCards('tseRankings', sections, rankings);
+            renderRankingCards('otcRankings', otcSections, rankings);
+        }
+
+        function renderRankingCards(containerId, sections, rankings) {
+            const container = document.getElementById(containerId);
+            let html = '';
+            sections.forEach(sec => {
+                const data = rankings[sec.key] || [];
+                const netField = sec.key.includes('foreign') ? 'foreign_net' : 'trust_net';
+                html += `<div class="ranking-card">
+                    <h3 class="${sec.cls}">${sec.label} Top ${data.length}</h3>
+                    <table><thead><tr>
+                        <th>#</th><th>代號</th><th>名稱</th><th class="format-num">買賣超(股)</th>
+                    </tr></thead><tbody>`;
+                data.forEach((r, i) => {
+                    const net = r[netField] || 0;
+                    html += `<tr>
+                        <td>${i+1}</td>
+                        <td style="font-weight:600;">${r.code}</td>
+                        <td>${r.name}</td>
+                        <td class="format-num ${net > 0 ? 'num-positive' : 'num-negative'}">${formatShares(net)}</td>
+                    </tr>`;
+                });
+                if (data.length === 0) html += '<tr><td colspan="4" style="text-align:center;color:#999;">無資料</td></tr>';
+                html += '</tbody></table></div>';
+            });
+            container.innerHTML = html;
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
+            ['recommended', 'rankings', 'all'].forEach(t => {
+                document.getElementById(`tab-${t}`).style.display = t === tab ? 'block' : 'none';
+            });
+        }
+
+        document.getElementById('dateSelect').addEventListener('change', loadData);
+
+        loadDates().then(() => loadData());
+    </script>
+</body>
+</html>
