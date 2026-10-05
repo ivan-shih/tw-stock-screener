@@ -133,6 +133,8 @@ def fetch_all_data(date_str):
 def get_recent_trading_dates(n=3):
     dates = []
     d = datetime.now()
+    if d.weekday() < 5:
+        dates.append(d.strftime('%Y%m%d'))
     while len(dates) < n:
         d -= timedelta(days=1)
         if d.weekday() < 5:
